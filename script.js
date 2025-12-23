@@ -1,35 +1,47 @@
-async function buscarUsuario(){
-  const input = document.getElementById("userInput").value;
-  const resultado = document.getElementById("resultado");
-  resultado.innerHTML = "⏳ Reconectando wifi...";
+async function buscar(){
+  const name = document.getElementById("username").value;
+  const card = document.getElementById("card");
+  const loader = document.getElementById("loader");
+  const sound = document.getElementById("sound");
 
-  let userId;
+  card.innerHTML = "";
+  loader.classList.remove("hidden");
+  sound.play();
 
-  if(isNaN(input)){
-    const res = await fetch("https://users.roblox.com/v1/usernames/users",{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({ usernames:[input] })
-    });
-    const data = await res.json();
-    if(!data.data.length){
-      resultado.innerHTML="❌ Usuario no encontrado";
-      return;
-    }
-    userId = data.data[0].id;
-  }else{
-    userId = input;
+  const search = await fetch("https://users.roblox.com/v1/users/search?keyword="+name)
+  .then(r=>r.json());
+
+  if(!search.data.length){
+    loader.innerHTML="❌ Usuario no encontrado";
+    return;
   }
 
-  const user = await fetch(`https://users.roblox.com/v1/users/${userId}`).then(r=>r.json());
-  const avatar = `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=420x420&format=Png&isCircular=true`;
+  const id = search.data[0].id;
 
-  resultado.innerHTML = `
-    <img src="${avatar}">
-    <p><b>Nombre:</b> ${user.name}</p>
-    <p><b>Display:</b> ${user.displayName}</p>
-    <p><b>ID:</b> ${user.id}</p>
-    <p><b>Creado:</b> ${new Date(user.created).toLocaleDateString()}</p>
+  const user = await fetch(`https://users.roblox.com/v1/users/${id}`)
+  .then(r=>r.json());
+
+  const inv = await fetch(`https://inventory.roblox.com/v1/users/${id}/can-view-inventory`)
+  .then(r=>r.json());
+
+  const avatar = await fetch(
+    `https://thumbnails.roblox.com/v1/users/avatar?userIds=${id}&size=720x720&format=Png&isCircular=false`
+  ).then(r=>r.json());
+
+  loader.classList.add("hidden");
+
+  const banned = user.isBanned;
+  document.querySelector(".container").classList.toggle("red", banned);
+
+  card.innerHTML = `
+  <div class="card">
+    <img src="${avatar.data[0].imageUrl}">
+    <p><b>${user.name}</b> (${user.displayName})</p>
+    <p>🆔 ${id}</p>
+    <p>📅 Creado: ${user.created.split("T")[0]}</p>
+    <p>📝 ${user.description || "Sin descripción"}</p>
+    <p>✔ Verificado: ${user.hasVerifiedBadge}</p>
+    <p>🎒 Inventario visible: ${inv.canView}</p>
     <h3>😂 Este usuario le aparecerá<br>“Reconectar de wifi”</h3>
-  `;
+  </div>`;
 }
